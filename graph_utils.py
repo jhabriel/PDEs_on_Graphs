@@ -1,5 +1,36 @@
 import plotly.graph_objects as go
 import networkx as nx
+import matplotlib.pyplot as plt
+
+from typing import Union
+
+
+def plot_directed_graph(G: nx.DiGraph, show_plot=False) -> None:
+    """Plot a directed graph using matplotlib"""
+
+    pos = nx.circular_layout(G, scale=2)
+    plt.figure(figsize=(10, 7))
+    nx.draw_networkx(G,
+                     pos,
+                     arrows=True,
+                     with_labels=True,
+                     node_size=800,
+                     alpha=0.8
+                     )
+    if show_plot:
+        plt.show()
+
+
+def assign_node_position(G: Union[nx.Graph, nx.DiGraph],
+                         layout: str = "circular"
+                         ) -> None:
+    """Assign node position as attribute to each node"""
+
+    if layout == "circular":
+        pos = nx.circular_layout(G)
+
+    for node in G.nodes:
+        G.nodes[node]["pos"] = (pos[node][0], pos[node][1])
 
 
 def get_edge_trace(G: nx.Graph) -> go.Scatter:
@@ -29,7 +60,7 @@ def get_edge_trace(G: nx.Graph) -> go.Scatter:
     return edge_trace
 
 
-def get_node_trace(G: nx.Graph, color_vals=None) -> go.Scatter:
+def get_node_trace(G: nx.Graph, color_vals=None, size=10) -> go.Scatter:
     """Produce node_trace for plotting with plotly"""
 
     node_x = []
@@ -58,7 +89,7 @@ def get_node_trace(G: nx.Graph, color_vals=None) -> go.Scatter:
                 # 'Reds' | 'Blues' | 'Picnic' | 'Rainbow' | 'Portland' | 'Jet' |
                 # 'Hot' | 'Blackbody' | 'Earth' | 'Electric' | 'Viridis' |
                 colorscale="Hot",
-                size=10,
+                size=size,
                 colorbar=dict(
                     thickness=15, title="Value", xanchor="left", titleside="right"
                 ),
@@ -116,7 +147,11 @@ def plot_graph(G: nx.Graph, show_plot=False) -> go.Figure:
     return fig
 
 
-def animate_graph(data: list, times: list, show_animation=False) -> go.Figure:
+def animate_graph(data: list,
+                  times: list,
+                  show_animation=False,
+                  title="",
+                  ) -> go.Figure:
     """Produce graph animation"""
 
     # make figure
@@ -133,7 +168,7 @@ def animate_graph(data: list, times: list, show_animation=False) -> go.Figure:
         "zeroline": False,
         "showticklabels": False,
     }
-    fig_dict["layout"]["title"] = {"text": "Heat equation on a graph"}
+    fig_dict["layout"]["title"] = {"text": title}
     fig_dict["layout"]["titlefont_size"] = 20
     fig_dict["layout"]["showlegend"] = False
     fig_dict["layout"]["width"] = 900
