@@ -4,6 +4,8 @@ import networkx.linalg as nla
 import numpy as np
 import scipy.sparse as sps
 import graph_utils as gu
+import graph_factory as gf
+import discrete_operators as do
 import matplotlib.pyplot as plt
 
 
@@ -109,94 +111,68 @@ def incidence_matrix(G: nx.Graph) -> sps.csc_matrix:
     return K
 
 
-# %% Manually create a graph
+# %%
+G = gf.graph_wave_equation_example()
 
-G = nx.DiGraph()
+# Parameters
+T = 4  # final time
+tau = 0.01  # time step
+times = list(np.linspace(0, T, int(T / tau) + 1))  # times
+c = 2  # wave speed
+c_lim = (-0.8501321357603164, 1.0)
+amp = 10
+freq = 5
 
-# Add nodes
-G.add_node(0)
-G.add_node(1)
-G.add_node(2)
-G.add_node(3)
-G.add_node(4)
+# Operators
+L = do.laplacian_matrix(G)
+I = np.eye(G.number_of_nodes())
+A = 2 * I - tau ** 2 * c ** 2 * L.A
 
-# Add edges
-G.add_edge(0, 1)
-G.add_edge(2, 1)
-G.add_edge(3, 2)
-G.add_edge(4, 3)
-G.add_edge(0, 4)
-G.add_edge(0, 2)
+# First time level
+u0 = np.zeros(G.number_of_nodes())
+u0[0] = 1
+edge_trace = gu.get_edge_trace(G)
+node_trace = gu.get_node_trace(G, color_vals=u0, node_size=10, c_min_max=c_lim)
+data = [[edge_trace, node_trace]]
+sol = [u0]
 
-nx.draw_networkx(G, arrows=True, with_labels=True)
-plt.show()
+# Second time level
+f1 = np.zeros(G.number_of_nodes())
+#f1[0] = 10
+u1 = 0.5 * np.dot(A, u0) + 0.5 * tau ** 2 * f1
+node_trace = gu.get_node_trace(G, color_vals=u1, node_size=10, c_min_max=c_lim)
+data.append([edge_trace, node_trace])
+sol.append(u1)
 
-# Gradient, divergence, and Laplacian of the graph
-gradient = gradient_operator(G)
-divergence = divergence_operator(G)
-laplacian = laplacian_matrix(G)
-velocity = velocity_matrix(np.ones(G.number_of_edges()))
-advection_gradient = modified_gradient_operator(gradient)
-advection_laplacian = divergence * velocity * advection_gradient
+f = np.zeros(G.number_of_nodes())
 
+for t in times[2:]:
 
-#%% Run a simulation then
+    # Solve explicitly
+    # f[0] = 10
+    # if t > 2:
+    #     f[0] = -10
 
-# Initial conditions
-u0 = 0 * np.ones(G.number_of_nodes())
-u0[4] = 1  # set concentration equal to 1 at node 4
+    u = np.dot(A, u1) - u0 + tau ** 2 * f
+    sol.append(u)
 
-# Time parameters
-T = 2  # final time
-dt = 0.01  # time step
-times = list(np.linspace(0, T, int(T/dt)+1))  # times
+    # Update node trace
+    node_trace = gu.get_node_trace(G, color_vals=u, node_size=10, c_min_max=c_lim)
+    data.append([edge_trace, node_trace])
 
-# Advection Laplacian
-V = velocity_matrix(np.ones(G.number_of_edges()))
-Div = divergence_operator(G)
-Grad_adv = modified_gradient_operator(gradient_operator(G))
-L_adv = -Div * V * Grad_adv
+    # Update previous values
+    u0 = u1
+    u1 = u
 
-# Matrix of coefficients
-eye = np.eye(G.number_of_nodes())
-A = eye + dt * L_adv
-
-# Store solution
-sols = [u0]
-
-for t in times[1:]:
-
-    # Solve linear system
-    u = np.linalg.solve(A.A, u0)
-    sols.append(u)
-
-    # Update value for next time step
-    u0 = u
-
-
-#%% Plotting
-pos = nx.circular_layout(G)
-colors = range(G.number_of_nodes())
-cmap = plt.cm.autumn
-vmin = 0
-vmax = 1
-for sol in sols:
-    nx.draw_networkx(G,
-                     pos,
-                     arrows=True,
-                     with_labels=False,
-                     node_color=sol,
-                     node_size=800,
-                     cmap=plt.cm.autumn,
-                     vmin=vmin,
-                     vmax=vmax
-                     )
-    sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=vmin, vmax=vmax))
-    sm._A = []
-    plt.colorbar(sm)
-
-    #nx.draw(G, pos, node_color=sol, node_size=800, cmap=plt.cm.inferno)
-    plt.show()
+c_lim = (np.min(sol), np.max(sol))
 
 #%%
-print(u)
+fig = gu.animate_graph(
+    data,
+    times,
+    show_animation=True,
+    title="Wave equation on a graph"
+)
+
+
+
