@@ -60,7 +60,11 @@ def get_edge_trace(G: nx.Graph) -> go.Scatter:
     return edge_trace
 
 
-def get_node_trace(G: nx.Graph, color_vals=None, size=10) -> go.Scatter:
+def get_node_trace(G: nx.Graph,
+                   color_vals=None,
+                   node_size=10,
+                   c_min_max=(0, 1)
+                   ) -> go.Scatter:
     """Produce node_trace for plotting with plotly"""
 
     node_x = []
@@ -81,15 +85,15 @@ def get_node_trace(G: nx.Graph, color_vals=None, size=10) -> go.Scatter:
             marker=dict(
                 showscale=True,
                 reversescale=True,
-                cmin=0,
-                cmax=1,
+                cmin=c_min_max[0],
+                cmax=c_min_max[1],
                 color=color_vals,
                 # colorscale options
                 # 'Greys' | 'YlGnBu' | 'Greens' | 'YlOrRd' | 'Bluered' | 'RdBu' |
                 # 'Reds' | 'Blues' | 'Picnic' | 'Rainbow' | 'Portland' | 'Jet' |
                 # 'Hot' | 'Blackbody' | 'Earth' | 'Electric' | 'Viridis' |
                 colorscale="Hot",
-                size=size,
+                size=node_size,
                 colorbar=dict(
                     thickness=15, title="Value", xanchor="left", titleside="right"
                 ),
@@ -106,28 +110,35 @@ def get_node_trace(G: nx.Graph, color_vals=None, size=10) -> go.Scatter:
             y=node_y,
             mode="markers",
             hoverinfo="text",
-            marker=dict(color="Black", size=10, line_width=2),
+            marker=dict(
+                color="Black",
+                size=node_size,
+                line_width=2,
+            ),
             text=node_text,
         )
 
     return node_trace
 
 
-def plot_graph(G: nx.Graph, show_plot=False) -> go.Figure:
+def plot_graph(G: nx.Graph,
+               show_plot=False,
+               node_size=10,
+               fig_size=(500, 500)) -> go.Figure:
     """Plot graph"""
 
     num_edges = G.number_of_edges()
     edge_trace = get_edge_trace(G)
 
     num_nodes = G.number_of_nodes()
-    node_trace = get_node_trace(G)
+    node_trace = get_node_trace(G, node_size=node_size)
 
     node_text = []
     for (node, adj) in zip(range(0, G.number_of_nodes()), G.adjacency()):
         node_text.append(f"v_{node} has {str(len(adj[1]))} connections")
     node_trace.text = node_text
 
-    title = f"Connected random graph with {num_nodes} nodes and {num_edges} edges"
+    title = f"Graph with {num_nodes} nodes and {num_edges} edges"
 
     fig = go.Figure(
         data=[edge_trace, node_trace],
@@ -138,6 +149,8 @@ def plot_graph(G: nx.Graph, show_plot=False) -> go.Figure:
             margin=dict(b=20, l=5, r=5, t=40),
             xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
             yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            width=fig_size[0],
+            height=fig_size[1],
         ),
     )
 
@@ -151,6 +164,7 @@ def animate_graph(data: list,
                   times: list,
                   show_animation=False,
                   title="",
+                  fig_size=(900, 600)
                   ) -> go.Figure:
     """Produce graph animation"""
 
@@ -171,8 +185,8 @@ def animate_graph(data: list,
     fig_dict["layout"]["title"] = {"text": title}
     fig_dict["layout"]["titlefont_size"] = 20
     fig_dict["layout"]["showlegend"] = False
-    fig_dict["layout"]["width"] = 900
-    fig_dict["layout"]["height"] = 600
+    fig_dict["layout"]["width"] = fig_size[0]
+    fig_dict["layout"]["height"] = fig_size[1]
     fig_dict["layout"]["margin"] = {"b": 20, "l": 5, "r": 5, "t": 40}
     fig_dict["layout"]["hovermode"] = "closest"
     fig_dict["layout"]["updatemenus"] = [
